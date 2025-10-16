@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Online Voting System</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 0;}
+  .container { max-width: 400px; margin: 2rem auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 0 10px #ccc; }
+  h2 { text-align: center; }
+  input, button, select { width: 100%; padding: 0.8rem; margin: 0.5rem 0; font-size: 1rem; }
+  button { cursor: pointer; background: #007bff; border: none; color: white; border-radius: 4px; }
+  button:disabled { background: #aaa; cursor: not-allowed; }
+  #loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 2rem; }
+  .hidden { display: none; }
+  #iris-sample-select { margin-bottom: 1rem; }
+  .message { background: #d4edda; color: #155724; padding: 1rem; border-radius: 5px; margin: 1rem 0; }
+  .error { background: #f8d7da; color: #721c24; padding: 1rem; border-radius: 5px; margin: 1rem 0; }
+</style>
+</head>
+<body>
+
+<div id="loading">Loading Online Voting System...</div>
+
+<div class="container hidden" id="voter-id-form">
+  <h2>Step 1: Enter Voter Details</h2>
+  <input type="text" id="voterId" placeholder="Voter ID" />
+  <input type="text" id="phone" placeholder="Phone Number" />
+  <button id="sendOtpBtn">Send OTP</button>
+  <div id="step1-message"></div>
+</div>
+
+<div class="container hidden" id="otp-form">
+  <h2>Step 2: Enter OTP</h2>
+  <input type="text" id="otp" placeholder="Enter OTP" />
+  <button id="verifyOtpBtn">Verify OTP</button>
+  <div id="step2-message"></div>
+</div>
+
+<div class="container hidden" id="iris-form">
+  <h2>Step 3: Iris Verification (Simulation)</h2>
+  <p>Select Iris Sample (Simulated Iris Data):</p>
+  <select id="iris-sample-select">
+    <option value="">--Select Iris Sample--</option>
+    <option value="iris_sample_01">Iris Sample 01</option>
+    <option value="iris_sample_02">Iris Sample 02</option>
+    <option value="iris_sample_03">Iris Sample 03</option>
+    <option value="iris_sample_04">Iris Sample 04</option>
+    <option value="iris_sample_05">Iris Sample 05</option>
+    <option value="iris_sample_06">Iris Sample 06</option>
+    <option value="iris_sample_07">Iris Sample 07</option>
+    <option value="iris_sample_08">Iris Sample 08</option>
+    <option value="iris_sample_09">Iris Sample 09</option>
+    <option value="iris_sample_10">Iris Sample 10</option>
+  </select>
+  <button id="verifyIrisBtn">Verify Iris</button>
+  <div id="step3-message"></div>
+</div>
+
+<div class="container hidden" id="vote-form">
+  <h2>Step 4: Cast Your Vote</h2>
+  <select id="party-select">
+    <option value="">--Select Party--</option>
+    <option value="Party A">Party A</option>
+    <option value="Party B">Party B</option>
+    <option value="Party C">Party C</option>
+    <option value="Party D">Party D</option>
+    <option value="Party E">Party E</option>
+  </select>
+  <button id="voteBtn">Vote</button>
+  <div id="step4-message"></div>
+</div>
+
+<script>
+  const API_BASE = 'http://localhost:5000/api';
+
+  const loadingDiv = document.getElementById('loading');
+  const voterIdForm = document.getElementById('voter-id-form');
+  const otpForm = document.getElementById('otp-form');
+  const irisForm = document.getElementById('iris-form');
+  const voteForm = document.getElementById('vote-form');
+
+  // Step 1 elements
+  const voterIdInput = document.getElementById('voterId');
+  const phoneInput = document.getElementById('phone');
+  const sendOtpBtn = document.getElementById('sendOtpBtn');
+  const step1Message = document.getElementById('step1-message');
+
+  // Step 2 elements
+  const otpInput = document.getElementById('otp');
+  const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+  const step2Message = document.getElementById('step2-message');
+
+  // Step 3 elements
+  const irisSelect = document.getElementById('iris-sample-select');
+  const verifyIrisBtn = document.getElementById('verifyIrisBtn');
+  const step3Message = document.getElementById('step3-message');
+
+  // Step 4 elements
+  const partySelect = document.getElementById('party-select');
+  const voteBtn = document.getElementById('voteBtn');
+  const step4Message = document.getElementById('step4-message');
+
+  // Show loading for 5 seconds, then show voter ID form
+  setTimeout(() => {
+    loadingDiv.classList.add('hidden');
+    voterIdForm.classList.remove('hidden');
+  }, 5000);
+
+  // Step 1: Send OTP
+  sendOtpBtn.addEventListener('click', async () => {
+    const voterId = voterIdInput.value.trim();
+    const phone = phoneInput.value.trim();
+    step1Message.textContent = '';
+    if (!voterId || !phone) {
+      step1Message.textContent = 'Please enter both Voter ID and Phone number.';
+      step1Message.className = 'error';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voterId, phone }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        step1Message.textContent = data.message;
+        step1Message.className = 'message';
+        voterIdForm.classList.add('hidden');
+        otpForm.classList.remove('hidden');
+      } else {
+        step1Message.textContent = data.error || 'Failed to send OTP.';
+        step1Message.className = 'error';
+      }
+    } catch (e) {
+      step1Message.textContent = 'Error connecting to server.';
+      step1Message.className = 'error';
+    }
+  });
+
+  // Step 2: Verify OTP
+  verifyOtpBtn.addEventListener('click', async () => {
+    const voterId = voterIdInput.value.trim();
+    const phone = phoneInput.value.trim();
+    const otp = otpInput.value.trim();
+    step2Message.textContent = '';
+    if (!otp) {
+      step2Message.textContent = 'Please enter OTP.';
+      step2Message.className = 'error';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voterId, phone, otp }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        step2Message.textContent = data.message;
+        step2Message.className = 'message';
+        otpForm.classList.add('hidden');
+        irisForm.classList.remove('hidden');
+      } else {
+        step2Message.textContent = data.error || 'OTP verification failed.';
+        step2Message.className = 'error';
+      }
+    } catch (e) {
+      step2Message.textContent = 'Error connecting to server.';
+      step2Message.className = 'error';
+    }
+  });
+
+  // Step 3: Verify Iris (simulate)
+  verifyIrisBtn.addEventListener('click', async () => {
+    const voterId = voterIdInput.value.trim();
+    const phone = phoneInput.value.trim();
+    const irisHash = irisSelect.value;
+    step3Message.textContent = '';
+
+    if (!irisHash) {
+      step3Message.textContent = 'Please select an iris sample.';
+      step3Message.className = 'error';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/verify-iris`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voterId, phone, irisHash }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        step3Message.textContent = data.message;
+        step3Message.className = 'message';
+        irisForm.classList.add('hidden');
+        voteForm.classList.remove('hidden');
+      } else {
+        step3Message.textContent = data.error || 'Iris verification failed.';
+        step3Message.className = 'error';
+      }
+    } catch (e) {
+      step3Message.textContent = 'Error connecting to server.';
+      step3Message.className = 'error';
+    }
+  });
+
+  // Step 4: Vote
+  voteBtn.addEventListener('click', async () => {
+    const voterId = voterIdInput.value.trim();
+    const phone = phoneInput.value.trim();
+    const party = partySelect.value;
+    step4Message.textContent = '';
+
+    if (!party) {
+      step4Message.textContent = 'Please select a party to vote.';
+      step4Message.className = 'error';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voterId, phone, party }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        step4Message.textContent = data.message;
+        step4Message.className = 'message';
+        voteBtn.disabled = true;
+      } else {
+        step4Message.textContent = data.error || 'Voting failed.';
+        step4Message.className = 'error';
+      }
+    } catch (e) {
+      step4Message.textContent = 'Error connecting to server.';
+      step4Message.className = 'error';
+    }
+  });
+</script>
+
+</body>
+</html>
